@@ -73,6 +73,8 @@ mkdir -p "$WORK_DIR/mnt/esp/EFI/boot"
 cp -r "$CHROOT_DIR/usr/share/refind" "$WORK_DIR/mnt/esp/EFI/boot"
 mv "$WORK_DIR/mnt/esp/EFI/boot/refind/refind_x64.efi" "$WORK_DIR/mnt/esp/EFI/boot/bootx64.efi"
 cp /home/jmaloney/Projects/pkgdemon/archstep/refind.conf "$WORK_DIR/mnt/esp/EFI/boot/refind.conf"
+cp "$CHROOT_DIR/boot/vmlinuz-linux-lts" "$WORK_DIR/mnt/esp/EFI/boot/vmlinuz-linux-lts"
+cp "$CHROOT_DIR/boot/initramfs-linux-lts.img" "$WORK_DIR/mnt/esp/EFI/boot/initramfs-linux-lts.img"
 
 # Unmount the ESP image
 echo "Unmounting ESP image..."
