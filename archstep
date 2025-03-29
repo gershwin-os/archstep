@@ -9,7 +9,7 @@ fi
 # Variables
 BASE_DIR="/archstep"
 ESP_DIR="$BASE_DIR/ESP"
-ESP_IMG="$ESPDIR/esp.img"
+ESP_IMG="$ESP_DIR/esp.img"
 WORK_DIR="$BASE_DIR/arch-chroot-iso"      # Custom working directory
 ESP_MNT="$WORK_DIR/mnt/esp"
 ISO_OUTPUT_DIR="$BASE_DIR/arch-iso-output"  # Custom output directory
@@ -46,10 +46,6 @@ systemd-nspawn -D "$CHROOT_DIR" \
              export LANG=en_US.UTF-8 &&
              echo 'arch-chroot' > /etc/hostname"
 
-# Install GRUB inside chroot to ensure we have the GRUB bootloader and related files
-# echo "Installing GRUB in chroot..."
-# pacstrap -c "$WORK_DIR" grub os-prober linux-lts
-
 # # Create a SquashFS image of the chroot environment
 echo "Creating SquashFS image of the chroot environment..."
 mksquashfs "$CHROOT_DIR" "$SQUASHFS_IMG" -b 1M -comp xz
@@ -58,8 +54,8 @@ mksquashfs "$CHROOT_DIR" "$SQUASHFS_IMG" -b 1M -comp xz
 echo "Setting up bootloader and kernel..."
 
 # # Copy kernel and initramfs into the boot directory
-cp "$CHROOT_DIR/boot/vmlinuz-linux-lts" "$BOOT_DIR/vmlinuz"
-cp "$CHROOT_DIR/boot/initramfs-linux-lts.img" "$BOOT_DIR/initramfs.img"
+cp "$CHROOT_DIR/boot/vmlinuz-linux-lts" "$BOOT_DIR/vmlinuz-linux-lts"
+cp "$CHROOT_DIR/boot/initramfs-linux-lts.img" "$BOOT_DIR/initramfs-linux-lts.img"
 
 # Create the FAT32 image for the EFI System Partition (ESP)
 echo "Creating FAT32 image for EFI partition..."
@@ -74,25 +70,21 @@ mount "$ESP_IMG" "$WORK_DIR/mnt/esp"
 # Copy rEFInd files into the ESP for USB and ISO
 echo "Copying rEFInd files into the ESP..."
 mkdir -p "$WORK_DIR/mnt/esp/EFI/boot"
-mkdir -p "$WORK_DIR/EFI/boot"
 cp -r "$CHROOT_DIR/usr/share/refind" "$WORK_DIR/mnt/esp/EFI/boot"
-cp -r "$CHROOT_DIR/usr/share/refind" "$WORK_DIR/EFI/boot"
 mv "$WORK_DIR/mnt/esp/EFI/boot/refind/refind_x64.efi" "$WORK_DIR/mnt/esp/EFI/boot/bootx64.efi"
-cp "$WORK_DIR/mnt/esp/EFI/boot/bootx64.efi" "$WORK_DIR/EFI/boot/bootx64.efi"
 cp /home/jmaloney/Projects/pkgdemon/archstep/refind.conf "$WORK_DIR/mnt/esp/EFI/boot/refind.conf"
-cp /home/jmaloney/Projects/pkgdemon/archstep/refind.conf "$WORK_DIR/EFI/boot/refind.conf"
-#cp "$CHROOT_DIR/usr/share/refind/refind.conf-sample" "$WORK_DIR/mnt/esp/EFI/boot/refind.conf"
-#cp "$CHROOT_DIR/usr/share/refind/refind.conf-sample" "$WORK_DIR/EFI/boot/refind.conf"
 
 # Unmount the ESP image
 echo "Unmounting ESP image..."
 umount "$ESP_MNT"
 
+cp "$ESP_IMG" "$WORK_DIR"
+
 xorriso -as mkisofs -o "$ISO_OUTPUT_DIR/$ISO_NAME" \
   -R -J -l \
-  -e EFI/boot/bootx64.efi \
+  -eltorito-alt-boot \
+  -e esp.img \
   -no-emul-boot \
-  -append_partition 2 0xef "$ESP_IMG" \
   "$WORK_DIR"
 
 echo "ISO built at: $ISO_OUTPUT_DIR/$ISO_NAME"
