@@ -69,11 +69,18 @@ systemd-nspawn -D "$CHROOT_DIR" \
              cp Lat15XNU8x16.psf /usr/share/kbd/consolefonts/
              echo "FONT=Lat15XNU8x16" | tee -a /etc/vconsole.conf"
 
-# # Install Gerswhin
-# echo "Installing Gershwin..."
-# systemd-nspawn -D "$CHROOT_DIR" \
-#     bash -c "git clone https://github.com/gershwin-os/system.git --recurse-submodules &&
-#              cd system && make install"
+# Install Gerswhin
+echo "Installing Gershwin..."
+systemd-nspawn -D "$CHROOT_DIR" \
+    bash -c "ln -s /usr/bin/make /usr/bin/gmake
+             git clone -b iso-ng https://github.com/gershwin-os/system.git --recurse-submodules &&
+             cd system && make install"
+
+# Cleanup git repos
+echo "Cleanup git repos..."
+systemd-nspawn -D "$CHROOT_DIR" \
+    bash -c "rm -rf /xnufont
+             rm -rf /system"
 
 # Enter chroot environment and configure system
 echo "Entering chroot environment with systemd-nspawn..."
@@ -96,6 +103,12 @@ alias ls='ls -G'
 alias ll='ls -l'
 alias la='ls -la'
 export EDITOR=nano
+
+setopt NULL_GLOB
+for file in /etc/zsh/profile.d/*.zsh; do
+  [ -r "$file" ] && source "$file"
+done
+unsetopt NULL_GLOB
 
 neofetch --ascii_distro macos --disable packages
 EOF
