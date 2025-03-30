@@ -22,7 +22,7 @@ LOADER_ENTRIES_DIR="$LOADER_DIR/entries"
 
 ESP_DIR="$BASE_DIR/ESP"
 ESP_IMG="$ESP_DIR/esp.img"
-ESP_MNT="$WORK_DIR/mnt/esp"
+ESP_MNT="$WORK_DIR/esp"
 ESP_BOOT_DIR="$ESP_MNT/arch/boot/x86_64"
 ESP_EFI_BOOT_DIR="$ESP_MNT/EFI/BOOT"
 ESP_LOADER_DIR="$ESP_MNT/loader"
@@ -115,16 +115,18 @@ cp -R "$BOOT_DIR"/* "$ESP_BOOT_DIR"
 
 # Unmount the ESP image
 echo "Unmounting ESP image..."
-umount "$WORK_DIR/mnt/esp"
+umount "$ESP_MNT"
 
-cp "$ESP_IMG" "$WORK_DIR"
+# Cleanup before making ISO
+rm -rf "$ESP_MNT"
+rm -rf "$CHROOT_DIR"
 
 # Create the ISO using xorriso
 echo "Building ISO..."
 xorriso -as mkisofs -o "$ISO_OUTPUT_DIR/$ISO_NAME" \
   -R -J -l \
   -eltorito-alt-boot \
-  -e esp.img \
+  -append_partition 2 0xef "$ESP_IMG" \
   -no-emul-boot \
   "$WORK_DIR"
 
