@@ -8,15 +8,28 @@ fi
 
 # Variables
 BASE_DIR="/archstep"
+WORK_DIR="$BASE_DIR/arch-chroot-iso"
+
+CHROOT_DIR="$WORK_DIR/arch-chroot"
+ARCH_DIR="$WORK_DIR/arch"
+SQUASHFS_DIR="$ARCH_DIR/x86_64"
+SQUASHFS_IMG="$SQUASHFS_DIR/airootfs.sfs"
+BOOT_DIR="$ARCH_DIR/boot/x86_64"
+EFI_DIR="$WORK_DIR/EFI"
+EFI_BOOT_DIR="$EFI_DIR/BOOT"
+LOADER_DIR="$WORK_DIR/loader"
+LOADER_ENTRIES_DIR="$LOADER_DIR/entries"
+
 ESP_DIR="$BASE_DIR/ESP"
 ESP_IMG="$ESP_DIR/esp.img"
-WORK_DIR="$BASE_DIR/arch-chroot-iso"      # Custom working directory
 ESP_MNT="$WORK_DIR/mnt/esp"
-ISO_OUTPUT_DIR="$BASE_DIR/arch-iso-output"  # Custom output directory
-CHROOT_DIR="$WORK_DIR/arch-chroot"
+ESP_BOOT_DIR="$ESP_MNT/arch/boot/x86_64"
+ESP_EFI_BOOT_DIR="$ESP_MNT/EFI/BOOT"
+ESP_LOADER_DIR="$ESP_MNT/loader"
+ESP_LOADER_ENTRIES_DIR="$ESP_LOADER_DIR/entries"
+
+ISO_OUTPUT_DIR="$BASE_DIR/arch-iso-output"
 ISO_NAME="arch-chroot.iso"
-SQUASHFS_IMG="$WORK_DIR/rootfs.squashfs"
-BOOT_DIR="$WORK_DIR/boot"
 
 # Cleanup previous runs
 umount "$ESP_MNT"
@@ -26,10 +39,18 @@ rm -rf "$BASE_DIR"
 echo "Setting up Arch Linux chroot environment..."
 
 # Create necessary directories
-mkdir -p "$ESP_DIR"
 mkdir -p "$CHROOT_DIR"
-mkdir -p "$ESP_MNT"
+mkdir -p "$ARCH_DIR"
+mkdir -p "$SQUASHFS_DIR"
 mkdir -p "$BOOT_DIR"
+mkdir -p "$EFI_DIR"
+mkdir -p "$EFI_BOOT_DIR"
+mkdir -p "$LOADER_DIR"
+mkdir -p "$LOADER_ENTRIES_DIR"
+
+mkdir -p "$ESP_DIR"
+mkdir -p "$ESP_MNT"
+
 mkdir -p "$ISO_OUTPUT_DIR"
 
 # Bootstrap Arch Linux base system with LTS kernel and bash
@@ -52,43 +73,45 @@ mksquashfs "$CHROOT_DIR" "$SQUASHFS_IMG" -b 1M -comp xz
 # Set up the boot directory structure for BIOS and UEFI
 echo "Setting up systemd-boot and kernel..."
 
-# Create the FAT32 image for the EFI System Partition (ESP)
-echo "Creating FAT32 image for EFI partition..."
-mkdir -p "$ESP_DIR/ESP"
-dd if=/dev/zero of="$ESP_IMG" bs=1M count=100  # Create a 100MB FAT32 partition image
-mkfs.fat -F32 "$ESP_IMG"  # Format the image as FAT32
-
-# Mount the FAT32 image to copy systemd-boot files into it
-mkdir -p "$WORK_DIR/mnt/esp"
-mount "$ESP_IMG" "$WORK_DIR/mnt/esp"
-mkdir "$WORK_DIR/mnt/esp/EFI"
-
-# Copy systemd-boot files into the ESP
-echo "Copying systemd-boot files into the ESP..."
-bootctl --path="$WORK_DIR/mnt/esp" install  # Install systemd-boot to ESP
-
 # Create systemd-boot entries
-mkdir -p "$WORK_DIR/mnt/esp/loader/entries"
-
-cat > "$WORK_DIR/mnt/esp/loader/entries/arch-live.conf" <<EOF
+cat > "$LOADER_ENTRIES_DIR/arch-live.conf" <<EOF
 title   Arch Linux Live
-linux   /arch/boot/vmlinuz-linux-lts
-initrd  /arch/boot/initramfs-linux-lts.img
-options root=live:/rootfs.squashfs boot=live toram
+linux   /arch/boot/x86_64/vmlinuz-linux-lts
+initrd  /arch/boot/x86_64/initramfs-linux-lts.img
+options  archisobasedir=arch archisosearchuuid=2025-03-01-17-40-22-00
 EOF
 
-cat > "$WORK_DIR/mnt/esp/loader/loader.conf" <<EOF
+cat > "$LOADER_DIR/loader.conf" <<EOF
 default arch-live.conf
 timeout 5
 EOF
 
-mkdir -p "$WORK_DIR/mnt/esp/EFI/BOOT"
-cp "$CHROOT_DIR/usr/lib/systemd/boot/efi/systemd-bootx64.efi" "$WORK_DIR/mnt/esp/EFI/BOOT/BOOTx64.EFI"
-cp "$CHROOT_DIR/usr/lib/systemd/boot/efi/systemd-bootx64.efi" "$WORK_DIR/mnt/esp/BOOTx64.EFI"
+# This may not be needed but testing
+mkdir "$WORK_DIR/boot"
+touch "$WORK_DIR/boot/2025-03-01-17-40-22-00.uuid"
 
-mkdir -p "$WORK_DIR/mnt/esp/arch/boot/"
-cp "$CHROOT_DIR/boot/vmlinuz-linux-lts" "$WORK_DIR/mnt/esp/arch/boot/vmlinuz-linux-lts"
-cp "$CHROOT_DIR/boot/initramfs-linux-lts.img" "$WORK_DIR/mnt/esp/arch/boot/initramfs-linux-lts.img"
+# Copy boot file
+cp "$CHROOT_DIR/usr/lib/systemd/boot/efi/systemd-bootx64.efi" "$EFI_BOOT_DIR/BOOTx64.EFI"
+
+# Copy kernel files
+cp "$CHROOT_DIR/boot/vmlinuz-linux-lts" "$BOOT_DIR/vmlinuz-linux-lts"
+cp "$CHROOT_DIR/boot/initramfs-linux-lts.img" "$BOOT_DIR/initramfs-linux-lts.img"
+
+# Create the FAT32 image for the EFI System Partition (ESP)
+echo "Creating FAT32 image for EFI partition..."
+dd if=/dev/zero of="$ESP_IMG" bs=1M count=100  # Create a 100MB FAT32 partition image
+mkfs.fat -F32 "$ESP_IMG"  # Format the image as FAT32
+
+# Mount the FAT32 image to copy systemd-boot files into it
+mount "$ESP_IMG" "$ESP_MNT"
+mkdir -p "$ESP_BOOT_DIR"
+mkdir -p "$ESP_EFI_BOOT_DIR"
+mkdir -p "$ESP_LOADER_DIR"
+mkdir -p "$ESP_LOADER_ENTRIES_DIR"
+
+cp -R "$LOADER_DIR"/* "$ESP_LOADER_DIR"
+cp -R "$EFI_BOOT_DIR"/* "$ESP_EFI_BOOT_DIR"
+cp -R "$BOOT_DIR"/* "$ESP_BOOT_DIR"
 
 # Unmount the ESP image
 echo "Unmounting ESP image..."
