@@ -124,10 +124,18 @@ rm -rf "$CHROOT_DIR"
 # Create the ISO using xorriso
 echo "Building ISO..."
 xorriso -as mkisofs -o "$ISO_OUTPUT_DIR/$ISO_NAME" \
-  -R -J -l \
-  -eltorito-alt-boot \
-  -append_partition 2 0xef "$ESP_IMG" \
-  -no-emul-boot \
+  -iso-level 3 \
+  -full-iso9660-filenames \
+  -joliet \
+  -joliet-long \
+  -rational-rock \
+  -volid "GERSHWIN" \
+  -appid "Gershwin Live/Rescue DVD" \
+  -publisher "pkgdemon" \
+  -preparer "prepared by pkgdemon" \
+  -partition_offset '16' \
+  -append_partition '2' 'C12A7328-F81F-11D2-BA4B-00A0C93EC93B' "$ESP_IMG" \
+  -appended_part_as_gpt \
   "$WORK_DIR"
 
 echo "ISO built at: $ISO_OUTPUT_DIR/$ISO_NAME"
