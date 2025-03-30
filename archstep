@@ -58,7 +58,7 @@ pacstrap -c $CHROOT_DIR base base-devel linux-lts zsh mkinitcpio-archiso sudo gi
   gcc-objc clang libjpeg-turbo libtiff libpng libicns imagemagick libxml2 libxslt gnutls libffi \
   icu cairo libxft avahi flite libxt portaudio make cmake openssl freeglut giflib libao \
   xorg-server xorg-xinit xf86-input-libinput xf86-video-intel xf86-video-amdgpu xf86-video-nouveau \
-  xfce4-panel xfce4-session xfwm4 xfce4-settings xfdesktop neofetch
+  xfce4-panel xfce4-session xfwm4 xfce4-settings xfdesktop xfce4-terminal neofetch
 
 # Install XNUfont
 echo "Installing XNUfont..."
