@@ -54,7 +54,11 @@ mkdir -p "$ESP_MNT"
 mkdir -p "$ISO_OUTPUT_DIR"
 
 # Bootstrap Arch Linux base system with LTS kernel
-pacstrap -c $CHROOT_DIR base linux-lts zsh mkinitcpio-archiso sudo
+pacstrap -c $CHROOT_DIR base base-devel linux-lts zsh mkinitcpio-archiso sudo git xdg-user-dirs nano less \
+  gcc-objc clang libjpeg-turbo libtiff libpng libicns imagemagick libxml2 libxslt gnutls libffi \
+  icu cairo libxft avahi flite libxt portaudio make cmake openssl freeglut giflib libao \
+  xorg-server xorg-xinit xf86-input-libinput xf86-video-intel xf86-video-amdgpu xf86-video-nouveau \
+  xfce4-panel xfce4-session xfwm4 xfce4-settings xfdesktop
 
 # Enter chroot environment and configure system
 echo "Entering chroot environment with systemd-nspawn..."
@@ -65,6 +69,24 @@ systemd-nspawn -D "$CHROOT_DIR" \
              echo 'LANG=en_US.UTF-8' > /etc/locale.conf &&
              export LANG=en_US.UTF-8 &&
              echo 'arch-chroot' > /etc/hostname"
+
+# Setup .zshrc for Users
+cat > "$CHROOT_DIR//etc/skel/.zshrc" <<EOF
+# Removing the following line will break Ctrl-A and Ctrl-E
+bindkey -e
+
+PROMPT='%n@%m %1~ %# '
+autoload -U colors
+colors
+PS1='%F{blue}%n%f@%F{green}%m%f %F{yellow}%1~%f %# '
+alias ls='ls -G'
+alias ll='ls -l'
+alias la='ls -la'
+export EDITOR=nano
+
+# Source GNUstep.sh
+# source /System/Makefiles/GNUstep.sh
+EOF
 
 # Create a user account
 echo "Creating hexley user account for live system"
