@@ -58,7 +58,7 @@ pacstrap -c $CHROOT_DIR base base-devel linux-lts zsh mkinitcpio-archiso sudo gi
   gcc-objc clang libjpeg-turbo libtiff libpng libicns imagemagick libxml2 libxslt gnutls libffi \
   icu cairo libxft avahi flite libxt portaudio make cmake openssl freeglut giflib libao \
   xorg-server xorg-xinit xf86-input-libinput xf86-video-intel xf86-video-amdgpu xf86-video-nouveau \
-  xfce4-panel xfce4-session xfwm4 xfce4-settings xfdesktop
+  xfce4-panel xfce4-session xfwm4 xfce4-settings xfdesktop neofetch
 
 # Install XNUfont
 echo "Installing XNUfont..."
@@ -69,11 +69,11 @@ systemd-nspawn -D "$CHROOT_DIR" \
              cp Lat15XNU8x16.psf /usr/share/kbd/consolefonts/
              echo "FONT=Lat15XNU8x16" | tee -a /etc/vconsole.conf"
 
-# Install Gerswhin
-echo "Installing Gershwin..."
-systemd-nspawn -D "$CHROOT_DIR" \
-    bash -c "git clone https://github.com/gershwin-os/system.git --recurse-submodules &&
-             cd system && make install"
+# # Install Gerswhin
+# echo "Installing Gershwin..."
+# systemd-nspawn -D "$CHROOT_DIR" \
+#     bash -c "git clone https://github.com/gershwin-os/system.git --recurse-submodules &&
+#              cd system && make install"
 
 # Enter chroot environment and configure system
 echo "Entering chroot environment with systemd-nspawn..."
@@ -83,24 +83,21 @@ systemd-nspawn -D "$CHROOT_DIR" \
              locale-gen &&
              echo 'LANG=en_US.UTF-8' > /etc/locale.conf &&
              export LANG=en_US.UTF-8 &&
-             echo 'arch-chroot' > /etc/hostname"
+             echo 'gershwin' > /etc/hostname"
 
 # Setup .zshrc for Users
 cat > "$CHROOT_DIR//etc/skel/.zshrc" <<EOF
 # Removing the following line will break Ctrl-A and Ctrl-E
 bindkey -e
-
-PROMPT='%n@%m %1~ %# '
 autoload -U colors
 colors
-PS1='%F{blue}%n%f@%F{green}%m%f %F{yellow}%1~%f %# '
+PS1='%{$(tput setaf 105)%}%n%{$(tput setaf 51)%}@%{$(tput setaf 51)%}%m %{$(tput setaf 231)%}%1~ %{$(tput sgr0)%}$ '
 alias ls='ls -G'
 alias ll='ls -l'
 alias la='ls -la'
 export EDITOR=nano
 
-# Source GNUstep.sh
-# source /System/Makefiles/GNUstep.sh
+neofetch --ascii_distro macos --disable packages
 EOF
 
 # Create a user account
