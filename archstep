@@ -53,8 +53,8 @@ mkdir -p "$ESP_MNT"
 
 mkdir -p "$ISO_OUTPUT_DIR"
 
-# Bootstrap Arch Linux base system with LTS kernel and bash
-pacstrap -c $CHROOT_DIR base linux-lts zsh mkinitcpio-archiso
+# Bootstrap Arch Linux base system with LTS kernel
+pacstrap -c $CHROOT_DIR base linux-lts zsh mkinitcpio-archiso sudo
 
 # Enter chroot environment and configure system
 echo "Entering chroot environment with systemd-nspawn..."
@@ -65,6 +65,19 @@ systemd-nspawn -D "$CHROOT_DIR" \
              echo 'LANG=en_US.UTF-8' > /etc/locale.conf &&
              export LANG=en_US.UTF-8 &&
              echo 'arch-chroot' > /etc/hostname"
+
+# Create a user account
+echo "Creating hexley user account for live system"
+systemd-nspawn -D "$CHROOT_DIR" \
+    bash -c "useradd -m -d /Users/hexley -s /usr/bin/zsh hexley &&
+             passwd -d hexley &&
+             usermod -aG wheel hexley"
+
+# Create sudoers file for hexley
+cat > "$CHROOT_DIR//etc/sudoers.d/00_hexley" <<EOF
+hexley ALL=(ALL) ALL
+EOF
+chmod 440 "$CHROOT_DIR//etc/sudoers.d/00_hexley"
 
 # Recreate linux-lts.preset for archiso.conf
 echo "Recreating linux-lts.preset"
