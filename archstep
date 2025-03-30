@@ -121,6 +121,8 @@ umount "$ESP_MNT"
 rm -rf "$ESP_MNT"
 rm -rf "$CHROOT_DIR"
 
+cp "$ESP_IMG" "$WORK_DIR/boot"
+
 # Create the ISO using xorriso
 echo "Building ISO..."
 xorriso -as mkisofs -o "$ISO_OUTPUT_DIR/$ISO_NAME" \
@@ -133,9 +135,11 @@ xorriso -as mkisofs -o "$ISO_OUTPUT_DIR/$ISO_NAME" \
   -appid "Gershwin Live/Rescue DVD" \
   -publisher "pkgdemon" \
   -preparer "prepared by pkgdemon" \
-  -partition_offset '16' \
-  -append_partition '2' 'C12A7328-F81F-11D2-BA4B-00A0C93EC93B' "$ESP_IMG" \
-  -appended_part_as_gpt \
+  -e boot/esp.img \
+  -no-emul-boot \
+  -append_partition 2 0xef "$ESP_IMG" \
+  -partition_cyl_align all \
+  -isohybrid-gpt-basdat \
   "$WORK_DIR"
 
 echo "ISO built at: $ISO_OUTPUT_DIR/$ISO_NAME"
