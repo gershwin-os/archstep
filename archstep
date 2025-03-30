@@ -54,7 +54,7 @@ mkdir -p "$ESP_MNT"
 mkdir -p "$ISO_OUTPUT_DIR"
 
 # Bootstrap Arch Linux base system with LTS kernel and bash
-pacstrap -c $CHROOT_DIR base linux-lts bash mkinitcpio-archiso
+pacstrap -c $CHROOT_DIR base linux-lts zsh mkinitcpio-archiso
 
 # Enter chroot environment and configure system
 echo "Entering chroot environment with systemd-nspawn..."
