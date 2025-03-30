@@ -54,7 +54,7 @@ mkdir -p "$ESP_MNT"
 mkdir -p "$ISO_OUTPUT_DIR"
 
 # Bootstrap Arch Linux base system with LTS kernel and bash
-pacstrap -c $CHROOT_DIR base linux-lts bash
+pacstrap -c $CHROOT_DIR base linux-lts bash mkinitcpio-archiso
 
 # Enter chroot environment and configure system
 echo "Entering chroot environment with systemd-nspawn..."
@@ -65,6 +65,31 @@ systemd-nspawn -D "$CHROOT_DIR" \
              echo 'LANG=en_US.UTF-8' > /etc/locale.conf &&
              export LANG=en_US.UTF-8 &&
              echo 'arch-chroot' > /etc/hostname"
+
+# Recreate linux-lts.preset for archiso.conf
+echo "Recreating linux-lts.preset"
+cat > "$CHROOT_DIR/etc/mkinitcpio.d/linux-lts.preset" <<EOF
+# mkinitcpio preset file for the 'linux-lts' package on archiso
+
+PRESETS=('archiso')
+
+ALL_kver='/boot/vmlinuz-linux-lts'
+archiso_config='/etc/mkinitcpio.conf.d/archiso.conf'
+
+archiso_image="/boot/initramfs-linux-lts.img"
+EOF
+
+# Create archiso.conf for mkinitcpio
+echo "Updating /etc/mkinitcpio.conf..."
+cat > "$CHROOT_DIR/etc/mkinitcpio.conf.d/archiso.conf" <<EOF
+HOOKS=(base udev microcode modconf kms archiso archiso_loop_mnt block filesystems keyboard)
+COMPRESSION="xz"
+COMPRESSION_OPTIONS=(-9e)
+EOF
+
+# Generate the initramfs for the LTS kernel
+echo "Generating initramfs for LTS kernel..."
+systemd-nspawn -D "$CHROOT_DIR" mkinitcpio -c /etc/mkinitcpio.conf.d/archiso.conf -p linux-lts
 
 # Create a SquashFS image of the chroot environment
 echo "Creating SquashFS image of the chroot environment..."
@@ -78,7 +103,7 @@ cat > "$LOADER_ENTRIES_DIR/arch-live.conf" <<EOF
 title   Arch Linux Live
 linux   /arch/boot/x86_64/vmlinuz-linux-lts
 initrd  /arch/boot/x86_64/initramfs-linux-lts.img
-options  archisobasedir=arch archisosearchuuid=2025-03-01-17-40-22-00
+options  archisobasedir=arch archisosearchfilename=/boot/2025-03-01-17-40-22-00.uuid
 EOF
 
 cat > "$LOADER_DIR/loader.conf" <<EOF
