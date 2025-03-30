@@ -17,7 +17,6 @@ CHROOT_DIR="$WORK_DIR/arch-chroot"
 ISO_NAME="arch-chroot.iso"
 SQUASHFS_IMG="$WORK_DIR/rootfs.squashfs"
 BOOT_DIR="$WORK_DIR/boot"
-EFI_DIR="$WORK_DIR/EFI/boot"
 
 # Cleanup previous runs
 umount "$ESP_MNT"
@@ -34,7 +33,7 @@ mkdir -p "$BOOT_DIR"
 mkdir -p "$ISO_OUTPUT_DIR"
 
 # Bootstrap Arch Linux base system with LTS kernel and bash
-pacstrap -c $CHROOT_DIR base linux-lts bash refind efibootmgr
+pacstrap -c $CHROOT_DIR base linux-lts bash
 
 # Enter chroot environment and configure system
 echo "Entering chroot environment with systemd-nspawn..."
@@ -46,16 +45,12 @@ systemd-nspawn -D "$CHROOT_DIR" \
              export LANG=en_US.UTF-8 &&
              echo 'arch-chroot' > /etc/hostname"
 
-# # Create a SquashFS image of the chroot environment
+# Create a SquashFS image of the chroot environment
 echo "Creating SquashFS image of the chroot environment..."
 mksquashfs "$CHROOT_DIR" "$SQUASHFS_IMG" -b 1M -comp xz
 
-# # Set up the boot directory structure for BIOS and UEFI
-echo "Setting up bootloader and kernel..."
-
-# # Copy kernel and initramfs into the boot directory
-cp "$CHROOT_DIR/boot/vmlinuz-linux-lts" "$BOOT_DIR/vmlinuz-linux-lts"
-cp "$CHROOT_DIR/boot/initramfs-linux-lts.img" "$BOOT_DIR/initramfs-linux-lts.img"
+# Set up the boot directory structure for BIOS and UEFI
+echo "Setting up systemd-boot and kernel..."
 
 # Create the FAT32 image for the EFI System Partition (ESP)
 echo "Creating FAT32 image for EFI partition..."
@@ -63,25 +58,46 @@ mkdir -p "$ESP_DIR/ESP"
 dd if=/dev/zero of="$ESP_IMG" bs=1M count=100  # Create a 100MB FAT32 partition image
 mkfs.fat -F32 "$ESP_IMG"  # Format the image as FAT32
 
-# Mount the FAT32 image to copy rEFInd files into it
+# Mount the FAT32 image to copy systemd-boot files into it
 mkdir -p "$WORK_DIR/mnt/esp"
 mount "$ESP_IMG" "$WORK_DIR/mnt/esp"
+mkdir "$WORK_DIR/mnt/esp/EFI"
 
-# Copy rEFInd files into the ESP for USB and ISO
-echo "Copying rEFInd files into the ESP..."
-mkdir -p "$WORK_DIR/mnt/esp/EFI/boot"
-cp -r "$CHROOT_DIR/usr/share/refind" "$WORK_DIR/mnt/esp/EFI/boot"
-mv "$WORK_DIR/mnt/esp/EFI/boot/refind/refind_x64.efi" "$WORK_DIR/mnt/esp/EFI/boot/bootx64.efi"
-cp /home/jmaloney/Projects/pkgdemon/archstep/refind.conf "$WORK_DIR/mnt/esp/EFI/boot/refind.conf"
-cp "$CHROOT_DIR/boot/vmlinuz-linux-lts" "$WORK_DIR/mnt/esp/EFI/boot/vmlinuz-linux-lts"
-cp "$CHROOT_DIR/boot/initramfs-linux-lts.img" "$WORK_DIR/mnt/esp/EFI/boot/initramfs-linux-lts.img"
+# Copy systemd-boot files into the ESP
+echo "Copying systemd-boot files into the ESP..."
+bootctl --path="$WORK_DIR/mnt/esp" install  # Install systemd-boot to ESP
+
+# Create systemd-boot entries
+mkdir -p "$WORK_DIR/mnt/esp/loader/entries"
+
+cat > "$WORK_DIR/mnt/esp/loader/entries/arch-live.conf" <<EOF
+title   Arch Linux Live
+linux   /arch/boot/vmlinuz-linux-lts
+initrd  /arch/boot/initramfs-linux-lts.img
+options root=live:/rootfs.squashfs boot=live toram
+EOF
+
+cat > "$WORK_DIR/mnt/esp/loader/loader.conf" <<EOF
+default arch-live.conf
+timeout 5
+EOF
+
+mkdir -p "$WORK_DIR/mnt/esp/EFI/BOOT"
+cp "$CHROOT_DIR/usr/lib/systemd/boot/efi/systemd-bootx64.efi" "$WORK_DIR/mnt/esp/EFI/BOOT/BOOTx64.EFI"
+cp "$CHROOT_DIR/usr/lib/systemd/boot/efi/systemd-bootx64.efi" "$WORK_DIR/mnt/esp/BOOTx64.EFI"
+
+mkdir -p "$WORK_DIR/mnt/esp/arch/boot/"
+cp "$CHROOT_DIR/boot/vmlinuz-linux-lts" "$WORK_DIR/mnt/esp/arch/boot/vmlinuz-linux-lts"
+cp "$CHROOT_DIR/boot/initramfs-linux-lts.img" "$WORK_DIR/mnt/esp/arch/boot/initramfs-linux-lts.img"
 
 # Unmount the ESP image
 echo "Unmounting ESP image..."
-umount "$ESP_MNT"
+umount "$WORK_DIR/mnt/esp"
 
 cp "$ESP_IMG" "$WORK_DIR"
 
+# Create the ISO using xorriso
+echo "Building ISO..."
 xorriso -as mkisofs -o "$ISO_OUTPUT_DIR/$ISO_NAME" \
   -R -J -l \
   -eltorito-alt-boot \
