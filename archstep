@@ -105,6 +105,9 @@ echo "Enabling services in chroot environment with systemd-nspawn..."
 systemd-nspawn -D "$CHROOT_DIR" \
     bash -c "systemctl enable NetworkManager"
 
+# Copy overlay files for new settings
+cp -R overlays/etc/skel/* "$CHROOT_DIR/etc/skel/"
+
 # Setup .zshrc for Users
 cat > "$CHROOT_DIR/etc/skel/.zshrc" <<EOF
 # Removing the following line will break Ctrl-A and Ctrl-E
