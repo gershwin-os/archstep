@@ -77,11 +77,18 @@ systemd-nspawn -D "$CHROOT_DIR" \
              git clone -b iso-ng https://github.com/gershwin-os/system.git --recurse-submodules &&
              cd system && make install"
 
+# Install macOS theme for XFCE
+echo "Installing macOS theme for XFCE.."
+systemd-nspawn -D "$CHROOT_DIR" \
+    bash -c "git clone https://github.com/B00merang-Project/macOS-Dark.git
+    mv macOS-Dark /usr/share/themes"
+
 # Cleanup git repos
 echo "Cleanup git repos..."
 systemd-nspawn -D "$CHROOT_DIR" \
     bash -c "rm -rf /xnufont
-             rm -rf /system"
+             rm -rf /system
+             rm -rf macOS-Dark"
 
 # Enter chroot environment and configure system
 echo "Entering chroot environment with systemd-nspawn..."
